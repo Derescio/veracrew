@@ -154,7 +154,7 @@ export function HeroSection() {
               </aside>
 
               {/* Main content */}
-              <main className="flex-1 p-3 overflow-hidden">
+              <div className="flex-1 p-3 overflow-hidden">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-slate-400 text-xs">
                     Welcome back, <span className="text-white font-semibold">David!</span>
@@ -203,7 +203,7 @@ export function HeroSection() {
                     </div>
                   ))}
                 </div>
-              </main>
+              </div>
             </div>
           </div>
 

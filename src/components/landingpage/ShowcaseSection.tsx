@@ -100,14 +100,13 @@ export function ShowcaseSection() {
                 </div>
                 {/* Map pins */}
                 {[
-                  { top: "30%", left: "25%", label: "Site A" },
-                  { top: "55%", left: "60%", label: "Site B" },
-                  { top: "20%", left: "70%", label: "Site C" },
-                ].map(({ top, left, label }) => (
+                  { className: "top-[30%] left-[25%]", label: "Site A" },
+                  { className: "top-[55%] left-[60%]", label: "Site B" },
+                  { className: "top-[20%] left-[70%]", label: "Site C" },
+                ].map(({ className: pinClass, label }) => (
                   <div
                     key={label}
-                    className="absolute flex items-center gap-1"
-                    style={{ top, left }}
+                    className={`absolute flex items-center gap-1 ${pinClass}`}
                   >
                     <div className="relative w-3 h-3">
                       <div className="absolute inset-0 rounded-full bg-brand-blue animate-ping opacity-60" />
