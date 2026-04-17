@@ -8,6 +8,7 @@ import { HowItWorksSection } from "@/components/landingpage/HowItWorksSection";
 import { PricingSection } from "@/components/landingpage/PricingSection";
 import { CtaSection } from "@/components/landingpage/CtaSection";
 import { Footer } from "@/components/landingpage/Footer";
+import RunningBoardPage from "@/components/landingpage/RunningBoardPage";
 
 export default function HomePage() {
   return (
@@ -15,7 +16,9 @@ export default function HomePage() {
       <Navbar />
       <main>
         <HeroSection />
+
         <ProblemSolutionSection />
+        <RunningBoardPage />
         <FeaturesSection />
         <ShowcaseSection />
         <TrustSection />
