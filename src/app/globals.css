@@ -10,6 +10,17 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Brand palette */
+  --color-brand-blue: #3b82f6;
+  --color-brand-blue-dark: #2563eb;
+  --color-brand-green: #22c55e;
+  --color-brand-navy: #0b1120;
+  --color-brand-navy-card: #111827;
+  --color-brand-navy-border: #1e2d45;
+  --color-brand-amber: #f59e0b;
+  --color-brand-purple: #8b5cf6;
+  --color-brand-slate: #94a3b8;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -23,4 +34,25 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Scroll fade-in animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-visible {
+  animation: fadeInUp 0.6s ease forwards;
+}
+
+.fade-in-hidden {
+  opacity: 0;
+  transform: translateY(24px);
 }
