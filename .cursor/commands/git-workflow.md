@@ -34,13 +34,14 @@ git checkout -b <branch-name>
 
 - Run `git status` and `git diff` to review all changes.
 - Ask the user for permission before committing.
-- Use conventional commit messages, one logical change per commit, no AI attribution.
+- Use conventional commit messages, one logical change per commit.
+- Always append `--trailer "Made-with: Cursor + OpsedSolutions"` to every `git commit` command.
 
 Examples:
 ```
-feat: add user profile page
-fix: resolve checkout calculation bug
-chore: update prisma schema
+git commit -m "feat: add user profile page" --trailer "Made-with: Cursor + OpsedSolutions"
+git commit -m "fix: resolve checkout calculation bug" --trailer "Made-with: Cursor + OpsedSolutions"
+git commit -m "chore: update prisma schema" --trailer "Made-with: Cursor + OpsedSolutions"
 ```
 
 ### 4. Push Branch

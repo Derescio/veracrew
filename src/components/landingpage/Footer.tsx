@@ -29,7 +29,7 @@ export function Footer() {
         <div className="flex-1 min-w-0 max-w-xs">
           <Link href="/" aria-label="VeraCrew home" className="inline-block mb-4">
             <Image
-              src="/images/Logo/VeraCrewLogo_top.png"
+              src="/images/Logo/VeraCrewLogo.png"
               alt="VeraCrew"
               width={130}
               height={32}
