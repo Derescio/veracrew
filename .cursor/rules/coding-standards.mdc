@@ -1,0 +1,55 @@
+---
+description: Veracrew core standards for Next.js App Router, multi-tenant org scoping, Tailwind v4, Prisma, and TypeScript
+alwaysApply: true
+---
+# Coding Standards
+
+## Tailwind CSS v4
+
+**CRITICAL**: v4 uses CSS-based config only.
+
+- **DO NOT** create `tailwind.config.ts` or `tailwind.config.js`
+- All theme config goes in `src/app/globals.css` via `@theme` directive
+- No inline styles; no CSS Modules; dark mode first
+
+## Product Architecture
+
+- Veracrew is a multi-tenant workforce operations app, not a single-user app.
+- Model all sensitive reads and writes around `organizationId`, active membership, and role.
+- Use NextAuth/Auth.js as the default auth solution for the current project phase.
+- Keep provider-specific auth access inside the auth layer and expose project-local helpers such as `requireOrgContext()`, `assertOrgMembership()`, and `requireRole()` to the rest of the app.
+- Never trust `organizationId`, `role`, or actor identity from client input when they can come from session or server context.
+
+## Next.js
+
+- Server Components by default; `"use client"` only for interactivity, hooks, or browser APIs.
+- Use Server Actions for form submissions and mutations.
+- Use API routes only for: webhooks, file uploads, long-running operations, mobile/CLI endpoints, geolocation checks that need HTTP semantics, or third-party integrations.
+- Validate all external inputs with Zod; return `{ data }` / `{ error }` patterns from actions unless the route contract requires another shape.
+
+## File Organization
+
+- Components: `src/components/[feature]/ComponentName.tsx`
+- Pages: `src/app/[route]/page.tsx`
+- Page-scoped components: `src/app/[route]/_components/`
+- Server Actions: `src/actions/[feature].ts`
+- Shared types: `.utils/types/index.ts`
+- Lib/Utils: `src/lib/[utility].ts`
+- Read queries: `src/lib/db/[feature].ts`
+- Auth and tenancy helpers: `src/lib/auth/` or `src/lib/[auth-domain].ts`
+
+## Naming
+
+- Components/Types/Interfaces: `PascalCase`
+- Files: kebab-case or match component name
+- Functions/variables: `camelCase`
+- Constants: `SCREAMING_SNAKE_CASE`
+- Booleans: prefix with `is`, `has`, `can`, `should`
+
+## Code Quality
+
+- No commented-out code, unused imports, or unused variables
+- Keep functions under 50 lines when possible
+- No `any` — use `unknown` + type guard for truly unknown shapes
+- Prefer small helpers over repeated org/role checks
+- Add short comments only when the business rule is not obvious from the code itself

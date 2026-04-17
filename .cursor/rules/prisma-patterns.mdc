@@ -1,0 +1,88 @@
+---
+description: Prisma ORM usage patterns for Veracrew multi-tenant PostgreSQL data models
+globs: prisma/**/*,src/lib/prisma.ts
+alwaysApply: false
+---
+
+# Prisma Patterns (v7)
+
+## Client Singleton (`src/lib/prisma.ts`)
+
+- Always import Prisma from `@/lib/prisma` — never instantiate `PrismaClient` elsewhere.
+- Prisma 7 requires a driver adapter. Use `PrismaPg` from `@prisma/adapter-pg` for PostgreSQL / Neon.
+- Import `PrismaClient` from the **generated path** `@/generated/prisma`, not `@prisma/client`.
+
+```ts
+// src/lib/prisma.ts
+import { PrismaClient } from "@/generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+
+function createPrismaClient(): PrismaClient {
+  const adapter = new PrismaPg({
+    connectionString: process.env.DATABASE_URL!,
+    ssl: { rejectUnauthorized: false }, // required for Neon SSL
+  });
+  return new PrismaClient({ adapter, log: ["error"] });
+}
+
+export const prisma: PrismaClient =
+  globalForPrisma.prisma ?? createPrismaClient();
+
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+```
+
+## Querying
+
+- Always `select` only the fields you need — never return full records to the client.
+- Use `findUnique` for ID lookups, `findFirst` when filtering by non-unique fields.
+- Wrap mutations in `try/catch` — Prisma throws on unique constraint violations and not-found errors.
+- Every org-owned query must scope by `organizationId` or verify the record belongs to the active organization before returning it.
+
+```ts
+// ❌ BAD — returns an org-owned record without org scoping
+const location = await prisma.location.findUnique({ where: { id } });
+
+// ✅ GOOD — scope by organization and select only what is needed
+const location = await prisma.location.findFirst({
+  where: { id, organizationId },
+  select: { id: true, name: true, address: true, radiusMeters: true },
+});
+```
+
+## Schema Conventions
+
+- Use `@id @default(cuid())` for primary keys.
+- Always add `createdAt` and `updatedAt` timestamps to every model.
+- Relation field names use camelCase; model names use PascalCase.
+- Add `@@index` on all foreign key fields.
+- Org-owned models should include `organizationId` and an `organization` relation unless there is a deliberate reason not to.
+- Use enums for core business concepts such as role, invite status, document status, notification kind, and job status.
+
+```prisma
+model Location {
+  id          String   @id @default(cuid())
+  name        String
+  address     String
+  lat         Float
+  lng         Float
+  radiusMeters Int    @default(100)
+  active      Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+}
+```
+
+## Migrations (Prisma 7)
+
+- Always run `prisma migrate dev --name <description>` after schema changes in development.
+- After migrating, **manually run `prisma generate`** — Prisma 7 no longer auto-generates the client.
+- Never edit migration files manually after they are committed.
+- The `prisma.config.ts` file at the root controls the datasource URL and migration path.
+- Generated client lives at `src/generated/prisma/` and is excluded from git.

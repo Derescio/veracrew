@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+# Track markdown in /docs; ignore other generated or local files under docs/
+/docs/*
+!/docs/*.md
 
 # next.js
 /.next/

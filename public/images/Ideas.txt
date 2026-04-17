@@ -1,0 +1,191 @@
+The bar below the hero could showcase the target audiences.
+
+	1. Field Service Businesses
+
+These are your BEST initial customers
+
+Examples:
+
+cleaning companies
+HVAC technicians
+plumbing teams
+electricians
+Why they fit:
+multiple workers
+multiple locations
+need time tracking + proof of work
+paperwork (invoices, compliance)
+
+👉 High pain = high willingness to pay
+
+	2. Construction & Trades Teams
+
+Examples:
+
+general contractors
+subcontractors
+roofing crews
+landscaping teams
+Their problems:
+tracking workers across job sites
+verifying attendance
+managing certifications/documents
+
+👉 Your GPS + document system = 🔥 perfect fit
+
+	3. Security Companies
+
+Examples:
+
+guard patrol companies
+event security teams
+Needs:
+location-based check-ins
+incident reporting (images + notes)
+shift tracking
+
+👉 Your “clock-in radius + logs” is extremely valuable here
+
+	4. Healthcare Support / Agencies
+
+Examples:
+
+home care providers
+PSW agencies
+rehabilitation support teams
+Needs:
+staff tracking across homes
+compliance documents
+shift logs
+
+⚠️ Note: Might involve privacy regulations later
+
+	5. Staffing & Temp Agencies
+
+Examples:
+
+warehouse staffing
+event staffing
+general labour agencies
+Needs:
+assign workers to locations
+track attendance
+verify hours
+
+👉 Huge opportunity if you add:
+
+basic scheduling
+2. Secondary (But Strong) Markets
+6. Property Management Companies
+
+Examples:
+
+building maintenance teams
+janitorial staff
+Needs:
+track staff across properties
+log issues (photos)
+document compliance
+
+	7. Event Management Teams
+
+Examples:
+
+festivals
+corporate events
+pop-up activations
+Needs:
+temporary staff tracking
+location-based attendance
+quick onboarding
+
+	8. Franchise Businesses
+
+Examples:
+
+cleaning franchises
+fitness franchises
+Needs:
+multi-location visibility
+standardized compliance
+reporting per location
+
+👉 Great for multi-tenant within tenant (advanced later)
+
+3. Emerging / Niche Opportunities
+9. Delivery & Logistics Teams
+
+Examples:
+
+last-mile delivery crews
+small courier companies
+Needs:
+route tracking
+clock-in/out
+proof of delivery (images)
+
+	10. Nonprofits / Outreach Teams
+
+Examples:
+
+community outreach
+volunteer coordination
+Needs:
+track volunteer hours
+manage documents
+simple onboarding
+
+Lower budget, but good for early traction
+
+	11. Film & Production Crews
+
+Examples:
+
+film shoots
+production assistants
+Needs:
+temporary crews
+location-based work
+time tracking
+
+	4. Who You Should TARGET FIRST
+
+Don’t go wide.
+
+Start with:
+
+Ideal Starting ICP (Ideal Customer Profile)
+
+Small–mid sized field service business (5–50 employees)
+
+Specifically:
+
+cleaning companies
+contractors
+security teams
+Why?
+urgent problems
+easy to reach
+clear ROI
+less regulation
+faster sales cycle
+
+	5. Positioning Insight (VERY IMPORTANT)
+
+You are NOT just:
+
+“time tracking software”
+
+You are:
+
+“Field team operations + compliance platform”
+
+That’s what makes you different.
+
+	6. Feature-to-Audience Mapping (this helps your roadmap)
+Feature	Who cares most
+GPS clock-in	construction, security
+document tracking	healthcare, contractors
+image uploads	property mgmt, security
+team management	agencies, staffing
+break tracking	everyone

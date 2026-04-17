@@ -1,0 +1,67 @@
+---
+description: Testing conventions using Vitest for Veracrew business rules, actions, and permission helpers
+globs: **/*.test.ts,**/*.test.tsx
+alwaysApply: false
+---
+
+# Testing Conventions
+
+## Setup
+
+- Use **Vitest** for all unit and integration tests.
+- Co-locate test files: `<module>.test.ts` sits next to `<module>.ts`.
+- Never import the real Prisma client in tests — always mock it.
+
+## Structure
+
+- One behavior per `it()` block — do not test multiple things in one assertion block.
+- Group related tests with `describe()`.
+- Use `vi.mock()` at the top of the file, before `describe()`.
+
+```ts
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createInvite } from "@/actions/team-members";
+
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    invite: {
+      create: vi.fn(),
+    },
+  },
+}));
+
+import { prisma } from "@/lib/prisma";
+
+describe("createInvite", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns created invite on valid input", async () => {
+    vi.mocked(prisma.invite.create).mockResolvedValue({ id: "1", email: "worker@example.com" });
+    const form = new FormData();
+    form.append("email", "worker@example.com");
+    const result = await createInvite(form);
+    expect(result.data?.email).toBe("worker@example.com");
+  });
+
+  it("returns validation error when email is missing", async () => {
+    const result = await createInvite(new FormData());
+    expect(result.error).toBeDefined();
+    expect(prisma.invite.create).not.toHaveBeenCalled();
+  });
+});
+```
+
+## What to Test
+
+- ✅ Business logic functions and server actions
+- ✅ Permission helpers (`requireRole`, org access checks, invite rules)
+- ✅ Time and pay calculations
+- ✅ Zod schema validation edge cases
+- ✅ Custom hooks (use `renderHook` from `@testing-library/react`)
+- ❌ Don't test framework internals (Next.js routing, Prisma internals)
+- ❌ Don't test implementation details — test observable behavior
+
+## Naming
+
+- `it("returns X when Y")` — describe input → expected output.
+- Avoid vague names like `it("works")` or `it("handles error")`.

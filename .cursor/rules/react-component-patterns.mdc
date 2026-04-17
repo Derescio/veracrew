@@ -1,0 +1,75 @@
+---
+description: React and Next.js App Router component patterns for Veracrew dashboards and operational workflows
+globs: **/*.tsx
+alwaysApply: false
+---
+
+# React / Next.js Component Patterns
+
+## Server vs Client Components
+
+- Server Components are the **default**. Keep data fetching and heavy logic in them.
+- Add `"use client"` only when the component needs: event handlers, hooks, or browser APIs.
+- Never fetch data inside a Client Component — pass it down as props from a Server Component.
+
+```tsx
+// ✅ Server Component (default — no directive needed)
+interface TeamMembersTableProps {
+  organizationId: string;
+}
+
+export default async function TeamMembersTable({
+  organizationId,
+}: TeamMembersTableProps) {
+  const members = await getTeamMembers(organizationId);
+  return <div className="p-4">{members.length} members</div>;
+}
+
+// ✅ Client Component (only when necessary)
+"use client";
+export function ClockInButton({ canClockIn }: { canClockIn: boolean }) {
+  const [pending, setPending] = useState(false);
+  return <button onClick={() => setPending(true)}>{canClockIn ? "Clock in" : "Unavailable"}</button>;
+}
+```
+
+## Props
+
+- Always define an explicit `interface` for props — never inline complex types.
+- Name it `<ComponentName>Props`.
+
+```tsx
+// ❌ BAD
+export function Card({ title, count }: { title: string; count: number }) {}
+
+// ✅ GOOD
+interface CardProps {
+  title: string;
+  count: number;
+}
+export function Card({ title, count }: CardProps) {}
+```
+
+## Styling — TailwindCSS v4
+
+- TailwindCSS v4 uses a CSS-first config (`@theme` in `globals.css`) — no `tailwind.config.js`.
+- Use Tailwind utility classes only. No inline styles, no CSS Modules.
+- Use `cn()` (from `@/lib/utils`) to conditionally merge classes.
+
+```tsx
+// ✅ GOOD
+import { cn } from "@/lib/utils";
+<div className={cn("p-4 rounded-lg", isActive && "bg-primary text-primary-foreground")} />
+```
+
+## UI Components
+
+- Prefer shadcn/ui primitives (`Button`, `Input`, `Card`, `Dialog`, etc.) over custom HTML.
+- Only build a custom component when shadcn/ui doesn't cover the use case.
+- For dense ops screens, prioritize legibility: tables, cards, badges, tabs, and empty states over decorative UI.
+
+## File Placement
+
+- Shared components → `src/components/<name>.tsx`
+- Page-specific components → `src/app/<route>/_components/<name>.tsx`
+- One component per file; filename matches the exported function name.

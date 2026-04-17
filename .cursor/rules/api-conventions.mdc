@@ -1,0 +1,111 @@
+---
+description: API route and server action conventions for Veracrew multi-tenant workflows
+globs: src/app/api/**/*.ts,src/actions/**/*.ts
+alwaysApply: false
+---
+
+# API Routes & Server Actions
+
+## Route Handlers (`app/api/.../route.ts`)
+
+- Always validate the request body with a Zod schema using `.safeParse()` — never `.parse()`.
+- Return consistent JSON shapes: `{ data }` on success, `{ error }` on failure.
+- Use explicit HTTP status codes.
+- Scope every org-owned query by `organizationId` and verify single-record ownership before mutation or disclosure.
+
+```ts
+import { NextRequest, NextResponse } from "next/server";
+import { CreateLocationSchema } from "@/lib/validators/location";
+import { prisma } from "@/lib/prisma";
+import { requireOrgContext, requireRole } from "@/lib/auth/context";
+
+export async function POST(req: NextRequest) {
+  const context = await requireOrgContext();
+  requireRole(context.role, "MANAGER");
+
+  const body = await req.json();
+  const result = CreateLocationSchema.safeParse(body);
+
+  if (!result.success) {
+    return NextResponse.json(
+      { error: result.error.flatten() },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const location = await prisma.location.create({
+      data: {
+        ...result.data,
+        organizationId: context.organizationId,
+      },
+      select: { id: true, name: true, radiusMeters: true },
+    });
+
+    return NextResponse.json({ data: location }, { status: 201 });
+  } catch (error) {
+    console.error("POST /api/locations failed", { error });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+```
+
+## Server Actions (`src/actions/<domain>.ts`)
+
+- Mark file with `"use server"` at the top.
+- Validate with Zod; return `{ error }` or `{ data }` — never throw to the client.
+- Call `revalidatePath()` or `revalidateTag()` after mutations.
+- Read the active user, active organization, and role from project-local auth helpers, not directly from raw client input.
+
+```ts
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/prisma";
+import { CreateInviteSchema } from "@/lib/validators/invite";
+import { requireOrgContext, requireRole } from "@/lib/auth/context";
+
+export async function createInvite(formData: FormData) {
+  const context = await requireOrgContext();
+  requireRole(context.role, "ADMIN");
+
+  const result = CreateInviteSchema.safeParse(Object.fromEntries(formData));
+
+  if (!result.success) {
+    return { error: result.error.flatten() };
+  }
+
+  try {
+    const invite = await prisma.invite.create({
+      data: {
+        ...result.data,
+        organizationId: context.organizationId,
+        invitedById: context.userId,
+      },
+      select: { id: true, email: true, role: true },
+    });
+
+    revalidatePath("/team-members");
+    return { data: invite };
+  } catch (error) {
+    console.error("createInvite failed", { error });
+    return { error: "Failed to create invite" };
+  }
+}
+```
+
+## Validators
+
+- Schemas live in `src/lib/validators/<domain>.ts`.
+- Export both the schema and the inferred type from the same file.
+
+```ts
+import { z } from "zod";
+
+export const CreateItemSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().optional(),
+});
+
+export type CreateItemInput = z.infer<typeof CreateItemSchema>;
+```

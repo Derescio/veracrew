@@ -1,0 +1,56 @@
+---
+description: TypeScript strict coding standards — no any, explicit types, proper error handling, centralized types
+globs: **/*.ts
+alwaysApply: false
+---
+
+# TypeScript Standards
+
+## Types
+
+- All shared types live in `.utils/types/index.ts` — never scatter type definitions.
+- Derive types from Zod schemas: `type Foo = z.infer<typeof FooSchema>`.
+- Use `type` for plain shapes, `interface` for extensible contracts.
+- Never use `any`. Use `unknown` + type guard for truly unknown shapes.
+- Strict mode enabled
+- Define interfaces for all props, API responses, and domain models
+- Use type inference where obvious, explicit types where helpful
+- Prefer explicit domain types for `OrganizationRole`, `DocumentStatus`, `NotificationKind`, and similar shared concepts instead of stringly-typed literals scattered across files
+
+```ts
+// ❌ BAD
+function process(data: any) { return data.value; }
+
+// ✅ GOOD
+function process(data: unknown): string {
+  if (typeof data === "object" && data !== null && "value" in data) {
+    return String((data as { value: unknown }).value);
+  }
+  throw new TypeError("Invalid data shape");
+}
+```
+
+## Error Handling
+
+- Never swallow errors with empty `catch` blocks.
+- Always log context alongside the error.
+
+```ts
+// ❌ BAD
+try { await fetchData(); } catch (e) {}
+
+// ✅ GOOD
+try {
+  await fetchData();
+} catch (error) {
+  console.error("fetchData failed", { error });
+  throw error;
+}
+```
+
+## Naming
+
+- `camelCase` for variables and functions.
+- `PascalCase` for types, interfaces, classes, and components.
+- `SCREAMING_SNAKE_CASE` for true constants.
+- Prefix booleans: `is`, `has`, `can`, `should`.
