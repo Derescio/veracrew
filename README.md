@@ -1,5 +1,7 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+Veracrew product and engineering plans live under [`docs/`](docs/). Phase 0 agent-oriented feature specs live under [`context/features/`](context/features/) (start at [`phase-0-index.md`](context/features/phase-0-index.md)).
+
 ## Getting Started
 
 First, run the development server:

@@ -330,8 +330,8 @@ git switch -c lesson-01-setup
 
 ## 📌 Status
 
-- Started
-- In Progress
+- In planning
+- Ready for environment setup & UI scaffolding
 
 ---
 

@@ -34,6 +34,7 @@ export function Footer() {
               width={130}
               height={32}
               className="h-8 w-auto"
+              priority
             />
           </Link>
           <p className="text-slate-400 text-sm leading-relaxed mb-5">
@@ -118,7 +119,7 @@ export function Footer() {
       <div className="border-t border-[#1e2d45]">
         <div className="max-w-7xl mx-auto px-6 py-5 flex flex-col sm:flex-row justify-between gap-2 text-xs text-slate-500">
           <span>© 2026 VeraCrew. All rights reserved.</span>
-          <span>Built for crews who mean business.</span>
+          <span className='text-lg'>Powered by <Link href='https://www.opsedsolutions.com' target='_blank' className="text-brand-blue hover:text-brand-blue-dark transition-colors">opsedsolutions.com</Link>.</span>
         </div>
       </div>
     </footer>
