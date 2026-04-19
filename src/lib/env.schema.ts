@@ -18,6 +18,9 @@ export const envSchema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_"),
   STRIPE_PRICE_ID_GROWTH: z.string().startsWith("price_"),
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().startsWith("pk_"),
+  STRIPE_LIVE_PRICE_GROWTH: z.string().startsWith("price_").optional(),
+  STRIPE_MODE: z.enum(["test", "live"]).optional(),
+  CRON_SECRET: z.string().min(32),
 
   // Cloudflare R2
   R2_ACCOUNT_ID: z.string().min(1),
