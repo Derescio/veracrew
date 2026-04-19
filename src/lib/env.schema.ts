@@ -5,8 +5,8 @@ export const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   DATABASE_URL_UNPOOLED: z.string().url(),
 
-  // Auth
-  NEXTAUTH_URL: z.string().url(),
+  // Auth — NEXTAUTH_URL is optional; NextAuth v5 infers it from VERCEL_URL in prod
+  NEXTAUTH_URL: z.string().url().optional(),
   NEXTAUTH_SECRET: z.string().min(32),
   GOOGLE_CLIENT_ID: z.string().min(1),
   GOOGLE_CLIENT_SECRET: z.string().min(1),
