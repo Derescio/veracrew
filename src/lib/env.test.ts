@@ -8,6 +8,7 @@ const VALID_ENV = {
   NEXTAUTH_SECRET: "a".repeat(32),
   GOOGLE_CLIENT_ID: "client-id",
   GOOGLE_CLIENT_SECRET: "client-secret",
+  ENCRYPTION_KEY: "a".repeat(64),
   STRIPE_SECRET_KEY: "sk_test_abc",
   STRIPE_WEBHOOK_SECRET: "whsec_abc",
   STRIPE_PRICE_ID_GROWTH: "price_abc",
