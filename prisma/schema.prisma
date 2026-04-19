@@ -6,3 +6,903 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// ─── NextAuth models ──────────────────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Identity & tenancy ───────────────────────────────────────────────────────
+
+model User {
+  id                   String    @id @default(cuid())
+  email                String    @unique
+  name                 String?
+  image                String?
+  locale               String?
+  twoFactorEnabled     Boolean   @default(false)
+  twoFactorSecret      String?
+  twoFactorBackupCodes String[]
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  deletedAt            DateTime?
+
+  memberships Membership[]
+  accounts    Account[]
+  sessions    Session[]
+}
+
+model Organization {
+  id                   String            @id @default(cuid())
+  name                 String
+  country              String
+  timezone             String
+  defaultLocale        String            @default("en")
+  currency             String            @default("USD")
+  clockInGatePolicy    ClockInGatePolicy @default(SOFT_WARNING)
+  conflictPolicy       ConflictPolicy    @default(WARN)
+  status               OrgStatus         @default(TRIALING)
+  stripeCustomerId     String?           @unique
+  legalHoldUntil       DateTime?
+  messageRetentionDays Int?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  memberships       Membership[]
+  locations         Location[]
+  jobRoles          JobRole[]
+  invites           Invite[]
+  payRules          PayRule[]
+  holidays          Holiday[]
+  teams             Team[]
+  subscription      OrgSubscription?
+  clients           Client[]
+  documentTemplates DocumentTemplate[]
+  shifts            Shift[]
+  projects          Project[]
+  jobs              Job[]
+  jobAssignments    JobAssignment[]
+  jobActivities     JobActivity[]
+  userDocuments     UserDocument[]
+  jobReqDocuments   JobRequiredDocument[]
+  timeEntries       TimeEntry[]
+  payrollExports    PayrollExport[]
+  timeOffRequests   TimeOffRequest[]
+  invoices          Invoice[]
+  activityEvents    ActivityEvent[]
+  notifications     Notification[]
+  messageThreads    MessageThread[]
+  auditEvents       AuditEvent[]
+}
+
+enum ClockInGatePolicy {
+  HARD_BLOCK
+  SOFT_WARNING
+}
+
+enum ConflictPolicy {
+  BLOCK
+  WARN
+}
+
+enum OrgStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  TRIAL_EXPIRED
+  CANCELLED
+  SUSPENDED
+}
+
+model Membership {
+  id                     String       @id @default(cuid())
+  userId                 String
+  organizationId         String
+  role                   Role         @default(WORKER)
+  jobRoleId              String?
+  hourlyRateOverrideCents Int?
+  status                 MemberStatus @default(ACTIVE)
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  jobRole      JobRole?     @relation(fields: [jobRoleId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId, role])
+  @@index([organizationId, jobRoleId])
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MANAGER
+  WORKER
+}
+
+enum MemberStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model Invite {
+  id             String    @id @default(cuid())
+  organizationId String
+  email          String
+  role           Role
+  jobRoleId      String?
+  token          String    @unique
+  invitedById    String
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, email])
+  // Raw SQL migration adds a partial unique index:
+  // CREATE UNIQUE INDEX invite_pending_unique ON "Invite" ("organizationId", "email")
+  // WHERE "acceptedAt" IS NULL AND "revokedAt" IS NULL;
+}
+
+model JobRole {
+  id                      String   @id @default(cuid())
+  organizationId          String
+  name                    String
+  defaultRegularRateCents Int
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  memberships  Membership[]
+  shifts       Shift[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+// ─── Locations ────────────────────────────────────────────────────────────────
+
+model Location {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  address        String
+  lat            Float
+  lng            Float
+  radiusMeters   Int      @default(100)
+  timezone       String
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  shifts       Shift[]
+  jobs         Job[]
+  timeEntries  TimeEntry[]
+
+  @@index([organizationId, isActive])
+}
+
+// ─── Scheduler ────────────────────────────────────────────────────────────────
+
+model Shift {
+  id             String    @id @default(cuid())
+  organizationId String
+  locationId     String
+  name           String
+  recurrenceRule String
+  startTimeLocal String
+  endTimeLocal   String
+  jobRoleId      String?
+  effectiveFrom  DateTime
+  effectiveTo    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  location     Location          @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  jobRole      JobRole?          @relation(fields: [jobRoleId], references: [id], onDelete: Restrict)
+  assignments  ShiftAssignment[]
+
+  @@index([organizationId, locationId, effectiveFrom])
+}
+
+model ShiftAssignment {
+  id             String    @id @default(cuid())
+  organizationId String
+  shiftId        String
+  userId         String
+  effectiveFrom  DateTime
+  effectiveTo    DateTime?
+  createdAt      DateTime  @default(now())
+
+  shift Shift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, userId, effectiveFrom])
+  @@index([shiftId])
+}
+
+model Team {
+  id                String    @id @default(cuid())
+  organizationId    String
+  name              String
+  description       String?
+  defaultLocationId String?
+  defaultJobRoleId  String?
+  isActive          Boolean   @default(true)
+  createdById       String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members        TeamMember[]
+  jobAssignments JobAssignment[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId, isActive])
+}
+
+model TeamMember {
+  id             String   @id @default(cuid())
+  organizationId String
+  teamId         String
+  userId         String
+  roleOnTeam     String?
+  addedById      String
+  addedAt        DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([organizationId, userId])
+  @@index([teamId])
+}
+
+model Client {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  contactEmail   String?
+  contactPhone   String?
+  address        String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projects     Project[]
+  jobs         Job[]
+  invoices     Invoice[]
+
+  @@index([organizationId])
+}
+
+model Project {
+  id             String   @id @default(cuid())
+  organizationId String
+  clientId       String
+  name           String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  client       Client       @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  jobs         Job[]
+
+  @@index([organizationId, clientId])
+}
+
+model Job {
+  id             String    @id @default(cuid())
+  organizationId String
+  clientId       String
+  projectId      String?
+  locationId     String?
+  title          String
+  description    String?
+  status         JobStatus @default(DRAFT)
+  scheduledStart DateTime?
+  scheduledEnd   DateTime?
+  createdById    String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization      Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  client            Client                @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  project           Project?              @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  location          Location?             @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  assignments       JobAssignment[]
+  requiredDocuments JobRequiredDocument[]
+  activities        JobActivity[]
+  timeEntries       TimeEntry[]
+
+  @@index([organizationId, status, scheduledStart])
+  @@index([organizationId, clientId])
+}
+
+enum JobStatus {
+  DRAFT
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model JobAssignment {
+  id                     String   @id @default(cuid())
+  organizationId         String
+  jobId                  String
+  userId                 String
+  roleOnJob              String?
+  assignedById           String
+  assignedAt             DateTime @default(now())
+  sourceTeamId           String?
+  conflictOverridden     Boolean  @default(false)
+  conflictOverrideReason String?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  job          Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  team         Team?        @relation(fields: [sourceTeamId], references: [id], onDelete: SetNull)
+
+  @@unique([jobId, userId])
+  @@index([organizationId, userId])
+  @@index([sourceTeamId])
+}
+
+model JobActivity {
+  id             String          @id @default(cuid())
+  organizationId String
+  jobId          String
+  authorId       String
+  type           JobActivityType
+  status         IssueStatus?
+  body           String
+  attachmentUrl  String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  job          Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, jobId, createdAt])
+}
+
+enum JobActivityType {
+  ISSUE
+  NOTE
+  IMAGE
+}
+
+enum IssueStatus {
+  OPEN
+  RESOLVED
+}
+
+// ─── Compliance & documents ───────────────────────────────────────────────────
+
+model DocumentTemplate {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  required       Boolean  @default(true)
+  expiryMonths   Int?
+  fileUrl        String?
+  jobRoleIds     String[]
+  isStarterPack  Boolean  @default(false)
+  starterPackKey String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userDocuments        UserDocument[]
+  jobRequiredDocuments JobRequiredDocument[]
+
+  @@index([organizationId])
+  @@index([starterPackKey])
+}
+
+model UserDocument {
+  id              String         @id @default(cuid())
+  organizationId  String
+  userId          String
+  templateId      String
+  jobAssignmentId String?
+  fileUrl         String
+  status          DocumentStatus @default(SUBMITTED)
+  submittedAt     DateTime       @default(now())
+  expiresAt       DateTime?
+  approvedById    String?
+  approvedAt      DateTime?
+  rejectionReason String?
+  scanStatus      ScanStatus     @default(CLEAN)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  template     DocumentTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, userId, status])
+  @@index([organizationId, status, expiresAt])
+}
+
+enum DocumentStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum ScanStatus {
+  PENDING
+  CLEAN
+  QUARANTINED
+}
+
+model JobRequiredDocument {
+  id             String                  @id @default(cuid())
+  organizationId String
+  jobId          String
+  templateId     String?
+  adhocFileUrl   String?
+  type           JobRequiredDocumentType
+  dueBefore      JobRequiredDocumentDue
+  createdAt      DateTime                @default(now())
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  job          Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  template     DocumentTemplate? @relation(fields: [templateId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, jobId])
+}
+
+enum JobRequiredDocumentType {
+  FILL_OUT
+  REFERENCE
+  PRE_EXISTING_REQUIRED
+}
+
+enum JobRequiredDocumentDue {
+  CLOCK_IN
+  SHIFT_END
+}
+
+// ─── Time & pay ───────────────────────────────────────────────────────────────
+
+model TimeEntry {
+  id                String          @id @default(cuid())
+  organizationId    String
+  userId            String
+  locationId        String
+  jobId             String?
+  shiftAssignmentId String?
+  clockIn           DateTime
+  clockOut          DateTime?
+  clockInLat        Float
+  clockInLng        Float
+  gpsAccuracyMeters Int?
+  source            TimeEntrySource @default(NORMAL)
+  deviceUuid        String?
+  flaggedReason     String?
+  approvedById      String?
+  approvedAt        DateTime?
+  submittedAt       DateTime?
+  legalHoldUntil    DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  deletedAt         DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  location     Location     @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  job          Job?         @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  breaks       Break[]
+
+  @@index([organizationId, userId, clockIn])
+  @@index([organizationId, locationId, clockIn])
+  @@unique([deviceUuid, clockIn], map: "timeentry_device_event_unique")
+}
+
+enum TimeEntrySource {
+  NORMAL
+  OFFLINE_SYNC
+  MANAGER_EDIT
+}
+
+model Break {
+  id          String    @id @default(cuid())
+  timeEntryId String
+  start       DateTime
+  end         DateTime?
+
+  timeEntry TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
+
+  @@index([timeEntryId])
+}
+
+model PayRule {
+  id                       String    @id @default(cuid())
+  organizationId           String
+  effectiveFrom            DateTime
+  effectiveTo              DateTime?
+  otDailyThresholdMinutes  Int?
+  otWeeklyThresholdMinutes Int?
+  otMultiplierBps          Int       @default(15000)
+  doubleMultiplierBps      Int?
+  holidayMultiplierBps     Int       @default(20000)
+  createdAt                DateTime  @default(now())
+  createdById              String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, effectiveFrom])
+}
+
+model Holiday {
+  id             String   @id @default(cuid())
+  organizationId String
+  date           DateTime @db.Date
+  name           String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, date])
+  @@index([organizationId])
+}
+
+model PayrollExport {
+  id             String              @id @default(cuid())
+  organizationId String
+  periodStart    DateTime
+  periodEnd      DateTime
+  generatedById  String
+  fileUrl        String
+  format         PayrollExportFormat
+  totalCents     Int
+  createdAt      DateTime            @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, periodStart])
+}
+
+enum PayrollExportFormat {
+  CSV
+  JSON
+}
+
+// ─── Time-off ─────────────────────────────────────────────────────────────────
+
+model TimeOffRequest {
+  id             String        @id @default(cuid())
+  organizationId String
+  userId         String
+  startsAt       DateTime
+  endsAt         DateTime
+  reason         String?
+  status         TimeOffStatus @default(PENDING)
+  decidedById    String?
+  decidedAt      DateTime?
+  createdAt      DateTime      @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, userId, startsAt])
+  @@index([organizationId, status])
+}
+
+enum TimeOffStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  CANCELLED
+}
+
+// ─── Invoicing ────────────────────────────────────────────────────────────────
+
+model Invoice {
+  id             String        @id @default(cuid())
+  organizationId String
+  clientId       String
+  number         String
+  status         InvoiceStatus @default(DRAFT)
+  totalCents     Int
+  taxCents       Int           @default(0)
+  issueDate      DateTime
+  dueDate        DateTime?
+  sentAt         DateTime?
+  markedPaidAt   DateTime?
+  markedPaidById String?
+  disputeNotes   String?
+  pdfUrl         String?
+  createdById    String
+  legalHoldUntil DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  client       Client           @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  lineItems    InvoiceLineItem[]
+
+  @@unique([organizationId, number])
+  @@index([organizationId, status, issueDate])
+  @@index([organizationId, clientId])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  MARKED_PAID
+  DISPUTED
+  VOID
+}
+
+model InvoiceLineItem {
+  id          String          @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Int
+  unitCents   Int
+  amountCents Int
+  sourceType  LineItemSource?
+  sourceRefId String?
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+enum LineItemSource {
+  TIME_ENTRY
+  JOB
+  MANUAL
+}
+
+// ─── Billing ──────────────────────────────────────────────────────────────────
+
+model OrgSubscription {
+  id                    String   @id @default(cuid())
+  organizationId        String   @unique
+  stripeSubscriptionId  String   @unique
+  stripePriceId         String
+  planKey               PlanKey  @default(STARTER)
+  status                String
+  trialEndsAt           DateTime?
+  currentPeriodEnd      DateTime
+  cancelAtPeriodEnd     Boolean  @default(false)
+  hasPaymentMethod      Boolean  @default(false)
+  requiresPaymentAction Boolean  @default(false)
+  seatCount             Int
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+enum PlanKey {
+  STARTER
+  GROWTH
+  SCALE
+}
+
+model StripeWebhookEvent {
+  id          String    @id
+  type        String
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+  payload     Json
+
+  @@index([type, receivedAt])
+}
+
+model R2DeletionJob {
+  id          String    @id @default(cuid())
+  bucket      String
+  objectKey   String
+  reason      String
+  sourceModel String?
+  sourceId    String?
+  attempts    Int       @default(0)
+  lastError   String?
+  completedAt DateTime?
+  dlqAt       DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([completedAt, dlqAt, createdAt])
+  @@index([bucket, objectKey])
+}
+
+// ─── Notifications, activity, messaging ──────────────────────────────────────
+
+model ActivityEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  actorUserId    String
+  verb           String
+  objectType     String
+  objectId       String
+  metadata       Json?
+  purgeAfter     DateTime
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, objectType, objectId])
+  @@index([organizationId, purgeAfter])
+}
+
+model Notification {
+  id             String               @id @default(cuid())
+  organizationId String
+  userId         String
+  kind           String
+  severity       NotificationSeverity @default(NORMAL)
+  title          String
+  body           String
+  resourceType   String?
+  resourceId     String?
+  readAt         DateTime?
+  emailSentAt    DateTime?
+  pushSentAt     DateTime?
+  purgeAfter     DateTime
+  createdAt      DateTime             @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, userId, readAt])
+  @@index([organizationId, purgeAfter])
+}
+
+enum NotificationSeverity {
+  LOW
+  NORMAL
+  URGENT
+}
+
+model MessageThread {
+  id             String     @id @default(cuid())
+  organizationId String
+  type           ThreadType
+  subject        String?
+  jobId          String?
+  locationId     String?
+  createdById    String
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  participants ThreadParticipant[]
+  messages     Message[]
+
+  @@index([organizationId, type])
+  @@index([organizationId, jobId])
+}
+
+enum ThreadType {
+  DIRECT
+  MANAGER_GROUP
+  JOB
+}
+
+model ThreadParticipant {
+  id         String    @id @default(cuid())
+  threadId   String
+  userId     String
+  lastReadAt DateTime?
+
+  thread MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@unique([threadId, userId])
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  threadId    String
+  senderId    String
+  body        String
+  attachments Json?
+  purgeAfter  DateTime
+  createdAt   DateTime @default(now())
+
+  thread MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
+  @@index([threadId, purgeAfter])
+}
+
+// ─── Audit trail ──────────────────────────────────────────────────────────────
+
+model AuditEvent {
+  id             String      @id @default(cuid())
+  organizationId String
+  actorUserId    String
+  action         AuditAction
+  resourceType   String
+  resourceId     String
+  before         Json?
+  after          Json?
+  ip             String?
+  userAgent      String?
+  createdAt      DateTime    @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, actorUserId, createdAt])
+  @@index([organizationId, resourceType, resourceId])
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  APPROVE
+  REJECT
+  LOGIN
+  LOGOUT
+  ROLE_CHANGE
+  DOC_DOWNLOAD
+  PAYROLL_EXPORT
+  INVITE_SEND
+  INVITE_ACCEPT
+  INVITE_REVOKE
+  TWO_FACTOR_ENABLE
+  TWO_FACTOR_DISABLE
+  TWO_FACTOR_RESET
+  SUBSCRIPTION_TRIAL_STARTED
+  SUBSCRIPTION_PAYMENT_METHOD_ADDED
+  SUBSCRIPTION_PAYMENT_METHOD_DETACHED
+  SUBSCRIPTION_ACTIVATED
+  SUBSCRIPTION_PAYMENT_FAILED
+  SUBSCRIPTION_PAST_DUE
+  SUBSCRIPTION_TRIAL_EXPIRED
+  SUBSCRIPTION_CANCELLED
+  SUBSCRIPTION_REACTIVATED
+  SUBSCRIPTION_PLAN_CHANGED
+  ORG_STATUS_CHANGED
+  ORG_REACTIVATE_MANUAL
+  TRIAL_EXTENDED
+  USER_TOMBSTONED
+  ORG_LEGAL_HOLD_SET
+  RETENTION_PURGE
+  R2_OBJECT_DELETED
+  R2_ORPHAN_QUARANTINED
+}
