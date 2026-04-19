@@ -10,6 +10,8 @@ export const envSchema = z.object({
   NEXTAUTH_SECRET: z.string().min(32),
   GOOGLE_CLIENT_ID: z.string().min(1),
   GOOGLE_CLIENT_SECRET: z.string().min(1),
+  // AES-256-GCM key for TOTP secret encryption at rest (hex, 64 chars = 32 bytes)
+  ENCRYPTION_KEY: z.string().length(64),
 
   // Stripe
   STRIPE_SECRET_KEY: z.string().startsWith("sk_"),
