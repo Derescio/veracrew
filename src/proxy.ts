@@ -29,7 +29,8 @@ export const proxy = auth((req: NextRequest & { auth: unknown }) => {
 
 export const config = {
   matcher: [
-    // Run on all routes except static assets and Next.js internals.
-    "/((?!_next/static|_next/image|favicon.ico|api/auth).*)",
+    // Run on all routes except static assets, Next.js internals, and
+    // API routes that use their own auth (Stripe signature, CRON_SECRET).
+    "/((?!_next/static|_next/image|favicon.ico|api/auth|api/webhooks|api/crons).*)",
   ],
 };

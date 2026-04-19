@@ -208,3 +208,7 @@ See **Billing & subscriptions → SUPERUSER manual override vs next Stripe webho
 ### Archived brainstorming list (superseded)
 
 An older numbered “gap dump” lived below this line. **Do not use it as the source of truth.** Data lifecycle, retention, `purgeAfter`, audit/GDPR stance, FK `onDelete`, and R2 deletion jobs are decided in [`docs/implementation_plan_updates.md`](./implementation_plan_updates.md) and reflected in [`docs/architecture.md`](./architecture.md) / [`docs/implementation_checklist.md`](./implementation_checklist.md). Operational follow-through (backups, R2, email bounces) is tracked for implementation in [`context/features/phase-0-operations-email-storage.md`](../context/features/phase-0-operations-email-storage.md). Remaining themes (mobile UX edge cases, labor-law depth, WCAG, support tooling) should be added as **new tagged entries** in this file when triaged—not resurrected from the old list verbatim.
+
+Any new route you add under these two prefixes inherits zero proxy protection. That means you are responsible for auth inside the route handler itself. For api/webhooks/*, that means always verifying the Stripe signature before doing anything. For api/crons/*, always checking x-cron-secret. Both routes already do this correctly.
+
+If you ever add a third type of system-to-system route (e.g. /api/integrations/* for a third-party callback), the same pattern applies — exclude it from the proxy and secure it inside the handler with whatever credential that system sends.

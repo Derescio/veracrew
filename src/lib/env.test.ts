@@ -13,6 +13,7 @@ const VALID_ENV = {
   STRIPE_WEBHOOK_SECRET: "whsec_abc",
   STRIPE_PRICE_ID_GROWTH: "price_abc",
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_test_abc",
+  CRON_SECRET: "a".repeat(32),
   R2_ACCOUNT_ID: "account-id",
   R2_ACCESS_KEY_ID: "access-key",
   R2_SECRET_ACCESS_KEY: "secret-key",

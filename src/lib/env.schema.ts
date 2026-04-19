@@ -13,18 +13,21 @@ export const envSchema = z.object({
   // AES-256-GCM key for TOTP secret encryption at rest (hex, 64 chars = 32 bytes)
   ENCRYPTION_KEY: z.string().length(64),
 
-  // Stripe — required from phase-0-03-billing onward
-  STRIPE_SECRET_KEY: z.string().startsWith("sk_").optional(),
-  STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_").optional(),
-  STRIPE_PRICE_ID_GROWTH: z.string().startsWith("price_").optional(),
-  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().startsWith("pk_").optional(),
+  // Stripe
+  STRIPE_SECRET_KEY: z.string().startsWith("sk_"),
+  STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_"),
+  STRIPE_PRICE_ID_GROWTH: z.string().startsWith("price_"),
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().startsWith("pk_"),
+  STRIPE_LIVE_PRICE_GROWTH: z.string().startsWith("price_").optional(),
+  STRIPE_MODE: z.enum(["test", "live"]).optional(),
+  CRON_SECRET: z.string().min(32),
 
-  // Cloudflare R2 — required from phase-0-04-operations onward
-  R2_ACCOUNT_ID: z.string().min(1).optional(),
-  R2_ACCESS_KEY_ID: z.string().min(1).optional(),
-  R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
-  R2_BUCKET_DOCS: z.string().min(1).optional(),
-  R2_BUCKET_IMAGES: z.string().min(1).optional(),
+  // Cloudflare R2
+  R2_ACCOUNT_ID: z.string().min(1),
+  R2_ACCESS_KEY_ID: z.string().min(1),
+  R2_SECRET_ACCESS_KEY: z.string().min(1),
+  R2_BUCKET_DOCS: z.string().min(1),
+  R2_BUCKET_IMAGES: z.string().min(1),
   R2_PUBLIC_URL: z.string().url().optional(),
 
   // Cloudflare Turnstile — required from phase-0-03-billing onward
