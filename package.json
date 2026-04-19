@@ -8,6 +8,7 @@
     "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint",
+    "lint:prisma-relations": "tsx scripts/lint-prisma-relations.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -50,6 +51,7 @@
     "prisma": "^7.7.0",
     "tailwindcss": "^4",
     "typescript": "^5",
+    "tsx": "^4.19.3",
     "vitest": "^4.1.4"
   }
 }
