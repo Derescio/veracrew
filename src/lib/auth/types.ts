@@ -6,6 +6,8 @@ export interface OrgContext {
   role: PlatformRole;
   jobRoleId?: string;
   membershipId: string;
+  userEmail: string;
+  orgName: string;
 }
 
 export interface VeracrewSession {
