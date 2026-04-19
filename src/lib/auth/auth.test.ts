@@ -103,8 +103,14 @@ describe("requireOrgContext", () => {
   });
 
   it("returns OrgContext for a valid active session", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "user-1" }, organizationId: "org-1" });
-    mockMembershipFindUnique.mockResolvedValue({ id: "mem-1", role: "OWNER", jobRoleId: null, status: "ACTIVE" });
+    mockAuth.mockResolvedValue({ user: { id: "user-1", email: "owner@example.com" }, organizationId: "org-1" });
+    mockMembershipFindUnique.mockResolvedValue({
+      id: "mem-1",
+      role: "OWNER",
+      jobRoleId: null,
+      status: "ACTIVE",
+      organization: { name: "Acme Corp" },
+    });
 
     const ctx = await requireOrgContext();
     expect(ctx).toEqual({
@@ -112,6 +118,8 @@ describe("requireOrgContext", () => {
       organizationId: "org-1",
       role: "OWNER",
       membershipId: "mem-1",
+      userEmail: "owner@example.com",
+      orgName: "Acme Corp",
     });
   });
 });

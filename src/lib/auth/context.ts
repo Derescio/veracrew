@@ -47,6 +47,7 @@ export async function requireOrgContext(): Promise<OrgContext> {
       role: true,
       jobRoleId: true,
       status: true,
+      organization: { select: { name: true } },
     },
   });
 
@@ -60,6 +61,8 @@ export async function requireOrgContext(): Promise<OrgContext> {
     role: membership.role as PlatformRole,
     jobRoleId: membership.jobRoleId ?? undefined,
     membershipId: membership.id,
+    userEmail: session.user.email ?? "",
+    orgName: membership.organization.name,
   };
 }
 

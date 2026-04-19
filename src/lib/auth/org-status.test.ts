@@ -16,6 +16,8 @@ const ctx: OrgContext = {
   organizationId: "org-1",
   role: "OWNER",
   membershipId: "mem-1",
+  userEmail: "owner@example.com",
+  orgName: "Acme Corp",
 };
 
 describe("requireOrgActive", () => {

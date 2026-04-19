@@ -2,26 +2,22 @@
 
 **Status:** Not Started
 
+**Branch:** `main`
+
 ---
 
 ## Goals
-
-_No active feature. Start one with `/feature-start`._
 
 ---
 
 ## Plan
 
-_None._
-
 ---
 
 ## Notes
-
-_None._
 
 ---
 
 ## History
 
-- **2026-04-19** — Completed `feature/stripe-webhooks-org-subscription-lifecycle-billing-crons`: Stripe webhook endpoint, 8 idempotent handlers, billing crons (trial + past-due expiry), plan-mapping, plan-limits, SUPERUSER reactivation stub, env schema updates, vercel.json cron registration, and full test suite (78 tests passing).
+- **2026-04-19** — Completed Phase 0-04: R2 Storage, Email (Resend), Rate Limiting (Upstash), Turnstile bot protection, Security Headers, next-intl i18n shell (EN/FR), authenticated app shell (`[locale]/(dashboard)`), and PWA scaffold (manifest + Workbox). All 28 implementation steps shipped; lint and build pass clean.

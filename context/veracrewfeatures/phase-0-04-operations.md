@@ -2,7 +2,7 @@
 
 ## Goal
 
-The app is deployable and hardened: files upload to Cloudflare R2 via presigned URLs, transactional email sends via Resend, security headers protect every response, the i18n shell supports English and French, and the app installs as a PWA on mobile. At the end of this slice, the infrastructure layer is complete and Phase 1 feature work can begin.
+The app is deployable and hardened: files upload to Cloudflare R2 via presigned URLs, transactional email sends via Resend, security headers protect every response, the i18n shell supports English and French, and the app installs as a PWA on mobile. At the end of this slice, the infrastructure layer is complete and Phase 1 feature work can begin. Check the .env file for confirmation.
 
 ## Prerequisites
 
