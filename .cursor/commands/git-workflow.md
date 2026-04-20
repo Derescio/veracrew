@@ -52,11 +52,19 @@ git push -u origin <branch-name>
 
 ### 5. Create Pull Request
 
-Create a PR targeting `main` using `gh pr create`. Include:
+Create a PR targeting `main` using `gh pr create`. Use this body template:
 
-- Clear title
-- Summary of changes (bullet points)
-- Testing steps
+```
+## Summary
+- <what changed>
+- <why / user impact>
+
+## Test Plan
+- <how to verify>
+
+## Notes
+- Built with [Cursor](https://cursor.com) · [OpsedSolutions](https://opsedsolutions.com)
+```
 
 ### 6. Merge
 

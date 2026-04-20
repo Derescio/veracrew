@@ -27,7 +27,7 @@ export function CtaSection() {
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Link
-                href="/auth/register"
+                href="/en/auth/sign-up"
                 className="inline-flex items-center gap-2 bg-white hover:bg-blue-50 text-brand-blue font-bold px-6 py-3 rounded-xl transition-colors text-sm"
               >
                 Start Free Trial — 14 Days

@@ -41,6 +41,14 @@ function getExtension(filename: string): string {
   return filename.split(".").pop()?.toLowerCase() ?? "";
 }
 
+/** Strips characters that are unsafe in S3 keys or Content-Disposition headers. */
+function sanitizeUploadFilename(name: string): string {
+  return name
+    .replace(/[^\w.\-]/g, "_") // keep word chars, dots, hyphens; replace rest with _
+    .replace(/_{2,}/g, "_")    // collapse consecutive underscores
+    .slice(0, 255);
+}
+
 interface PresignedUploadResult {
   presignedUrl: string;
   objectKey: string;
@@ -68,8 +76,10 @@ export async function getPresignedUploadUrl(
     return { error: `File exceeds the 50 MB limit.` };
   }
 
+  // Fix #22: sanitize caller-supplied filename before embedding in the S3 key
+  const safeFilename = sanitizeUploadFilename(filename);
   const documentId = crypto.randomUUID();
-  const objectKey = makeDocKey(ctx.organizationId, documentId, filename);
+  const objectKey = makeDocKey(ctx.organizationId, documentId, safeFilename);
   const bucket = BUCKETS.docs;
 
   const command = new PutObjectCommand({
@@ -104,13 +114,10 @@ export async function finalizeUpload(
     return { error: "Object key does not belong to your organization." };
   }
 
-  // Verify the object exists in R2 via HeadObject
-  let fileSize: number;
+  // Fix #13: HeadObject is kept for existence verification; ContentLength is not persisted
+  // (no fileSizeBytes column on UserDocument). Remove the dead variable assignment.
   try {
-    const headResult = await r2.send(
-      new HeadObjectCommand({ Bucket: bucket, Key: objectKey })
-    );
-    fileSize = headResult.ContentLength ?? 0;
+    await r2.send(new HeadObjectCommand({ Bucket: bucket, Key: objectKey }));
   } catch {
     return { error: "File not found in storage. Upload may have failed." };
   }
@@ -154,7 +161,6 @@ export async function finalizeUpload(
     return { error: "Failed to save document record. The uploaded file will be cleaned up." };
   }
 
-  void fileSize; // referenced to satisfy lint; stored in R2, accessible via fileUrl
   return { data: document };
 }
 

@@ -8,9 +8,11 @@ declare module "next-auth" {
       name?: string | null;
       image?: string | null;
     };
-    organizationId: string;
-    role: PlatformRole;
-    membershipId: string;
+    // Fix #18: nullable — users without an active membership have no org context;
+    // requireOrgContext() validates and throws before any downstream use.
+    organizationId: string | null;
+    role: PlatformRole | null;
+    membershipId: string | null;
   }
 
   interface User {
@@ -24,8 +26,9 @@ declare module "next-auth" {
 declare module "@auth/core/jwt" {
   interface JWT {
     userId: string;
-    organizationId: string;
-    role: PlatformRole;
-    membershipId: string;
+    // Fix #18: these fields are only populated when an active membership exists
+    organizationId?: string | null;
+    role?: PlatformRole | null;
+    membershipId?: string | null;
   }
 }

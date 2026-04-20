@@ -22,11 +22,25 @@ export class NoActiveOrgError extends Error {
   }
 }
 
+// Fix #16: carry status + organizationId so callers can route to correct recovery UI
 export class OrgInactiveError extends Error {
   readonly statusCode = 403;
-  constructor(message = "Organization is not active") {
+  readonly orgStatus: string;
+  readonly organizationId: string;
+
+  constructor({
+    status,
+    organizationId,
+    message = "Organization is not active",
+  }: {
+    status: string;
+    organizationId: string;
+    message?: string;
+  }) {
     super(message);
     this.name = "OrgInactiveError";
+    this.orgStatus = status;
+    this.organizationId = organizationId;
   }
 }
 

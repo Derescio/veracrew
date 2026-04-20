@@ -1,3 +1,5 @@
+import { env } from "@/lib/env";
+
 const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
 interface TurnstileVerifyResponse {
@@ -15,10 +17,8 @@ export async function verifyTurnstile(
   token: string,
   clientIp?: string
 ): Promise<{ success: boolean; errorCodes?: string[] }> {
-  const secretKey = process.env.TURNSTILE_SECRET_KEY;
-  if (!secretKey) {
-    throw new Error("TURNSTILE_SECRET_KEY is not configured");
-  }
+  // Fix #9: use validated env singleton (has schema default for CI; throws at boot if absent in prod)
+  const secretKey = env.TURNSTILE_SECRET_KEY;
 
   const body = new URLSearchParams({ secret: secretKey, response: token });
   if (clientIp) {

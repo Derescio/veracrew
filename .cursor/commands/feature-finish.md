@@ -76,9 +76,21 @@ Execute action: **$ARGUMENTS**
    - Clear `Goals`, `Plan`, `Notes`
    - Status → `Not Started`
    - Append one-line completion summary to `## History`
-6. Commit with a conventional commit message (no AI attribution, no `--amend`).
+6. Commit with a conventional commit message (no `--amend`). Always append the trailer:
+   `--trailer "Made-with: Cursor + OpsedSolutions"`
 7. `git push -u origin HEAD`
-8. `gh pr create` with title + body (2–4 bullets: what changed, how to test).
+8. `gh pr create` with title + body using this template:
+   ```
+   ## Summary
+   - <bullet: what changed>
+   - <bullet: why / user impact>
+
+   ## Test Plan
+   - <bullet: how to verify>
+
+   ## Notes
+   - Built with [Cursor](https://cursor.com) · [OpsedSolutions](https://opsedsolutions.com)
+   ```
 9. Remind user: run `/feature-finish cleanup` after the PR is merged.
 
 ---

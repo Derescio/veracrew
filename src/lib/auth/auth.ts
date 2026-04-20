@@ -96,11 +96,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
 
     async session({ session, token }) {
-      // JWT extends Record<string, unknown> so augmented fields require explicit casts.
+      // Fix #18: use null-coalescing so users without memberships get null rather than
+      // undefined bleeding through the `as string` lie. requireOrgContext() validates these.
       session.user.id = token.userId as string;
-      session.organizationId = token.organizationId as string;
-      session.role = token.role as PlatformRole;
-      session.membershipId = token.membershipId as string;
+      session.organizationId = (token.organizationId ?? null) as string | null;
+      session.role = (token.role ?? null) as PlatformRole | null;
+      session.membershipId = (token.membershipId ?? null) as string | null;
       return session;
     },
   },

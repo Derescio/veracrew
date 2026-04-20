@@ -7,6 +7,7 @@ import { r2 } from "@/lib/storage/r2";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { prisma } from "@/lib/db/prisma";
 import { headers } from "next/headers";
+import { env } from "@/lib/env";
 
 interface PresignedDownloadResult {
   url: string;
@@ -78,11 +79,10 @@ function extractObjectKey(fileUrl: string): string {
 }
 
 function getBucketFromKey(objectKey: string): string {
-  // Key shape: org_{id}/docs/... or org_{id}/images/... etc.
-  // Bucket mapping is embedded in the key's second segment.
+  // Fix #9: use validated env singleton instead of raw process.env with silent empty-string fallbacks
   const segment = objectKey.split("/")[1];
-  if (segment === "images") return process.env.R2_BUCKET_IMAGES ?? "";
-  return process.env.R2_BUCKET_DOCS ?? "";
+  if (segment === "images") return env.R2_BUCKET_IMAGES;
+  return env.R2_BUCKET_DOCS;
 }
 
 /** Strip non-ASCII characters and quotes to produce a safe Content-Disposition filename. */

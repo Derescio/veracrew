@@ -21,8 +21,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     event = stripe.webhooks.constructEvent(rawBody, sig, env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Signature verification failed";
-    return NextResponse.json({ error: message }, { status: 400 });
+    // Fix #15: never surface internal Stripe error details to the caller
+    console.error("[webhook/stripe] signature verification failed", { err });
+    return NextResponse.json({ error: "Signature verification failed" }, { status: 400 });
   }
 
   try {

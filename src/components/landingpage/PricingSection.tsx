@@ -17,7 +17,7 @@ const plans = [
       "Email support",
     ],
     cta: "Get Started",
-    href: "/auth/register",
+    href: "/en/auth/sign-up",
     highlighted: false,
   },
   {
@@ -35,7 +35,7 @@ const plans = [
       "Priority support + onboarding call",
     ],
     cta: "Start Free Trial",
-    href: "/auth/register",
+    href: "/en/auth/sign-up",
     highlighted: true,
   },
   {
