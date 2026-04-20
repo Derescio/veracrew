@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 // @ts-expect-error — next-pwa does not ship TS types in v5
 import withPWA from "next-pwa";
+import createNextIntlPlugin from "next-intl/plugin";
 
 const pwaConfig = {
   dest: "public",
@@ -41,9 +42,12 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
-  // Declare empty turbopack config so Next.js 16 doesn't error when next-pwa
-  // injects its webpack plugins. Full SW generation is wired in Phase 1.
-  turbopack: {},
+  turbopack: {
+    // next-intl v4 needs its config alias wired for Turbopack (webpack plugin doesn't apply)
+    resolveAlias: {
+      "next-intl/config": "./src/i18n/request.ts",
+    },
+  },
   async headers() {
     return [
       {
@@ -65,4 +69,6 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withPWA(pwaConfig)(nextConfig);
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
+
+export default withNextIntl(withPWA(pwaConfig)(nextConfig));

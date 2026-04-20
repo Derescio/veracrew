@@ -3,8 +3,8 @@ import { AuditAction, OrgStatus, Prisma } from "@/generated/prisma/client";
 
 const SYSTEM_ACTOR = "system";
 
-/** Grace period before a PAST_DUE org is cancelled (28 days). */
-const PAST_DUE_GRACE_DAYS = 28;
+// Fix #8: spec says 7-day grace before PAST_DUE → TRIAL_EXPIRED (was incorrectly 28)
+const PAST_DUE_GRACE_DAYS = 7;
 
 async function emitAudit(
   organizationId: string,
@@ -79,10 +79,8 @@ export async function checkTrialExpiry(): Promise<void> {
         where: { id: sub.organizationId },
         data: { status: OrgStatus.TRIAL_EXPIRED },
       });
-      await tx.orgSubscription.update({
-        where: { organizationId: sub.organizationId },
-        data: { status: "past_due" },
-      });
+      // Fix #7: do not overwrite OrgSubscription.status here — Stripe status stays "trialing"
+      // until Stripe cancels it. Diverging from Stripe's status breaks subsequent webhook processing.
     });
 
     await emitAudit(
@@ -126,22 +124,23 @@ export async function checkPastDueExpiry(): Promise<void> {
   for (const org of pastDueOrgs) {
     if (!org.subscription) continue;
 
+    // Fix #8: spec says PAST_DUE → TRIAL_EXPIRED (not CANCELLED) after grace period
     await prisma.organization.update({
       where: { id: org.id },
-      data: { status: OrgStatus.CANCELLED },
+      data: { status: OrgStatus.TRIAL_EXPIRED },
     });
 
     await emitAudit(
       org.id,
-      AuditAction.SUBSCRIPTION_CANCELLED,
+      AuditAction.SUBSCRIPTION_TRIAL_EXPIRED,
       "OrgSubscription",
       org.subscription.stripeSubscriptionId,
       { status: OrgStatus.PAST_DUE },
-      { status: OrgStatus.CANCELLED }
+      { status: OrgStatus.TRIAL_EXPIRED, reason: "past_due_7d_grace_expired" }
     );
     await emitActivity(
       org.id,
-      "SUBSCRIPTION_CANCELLED",
+      "SUBSCRIPTION_TRIAL_EXPIRED",
       "OrgSubscription",
       org.subscription.stripeSubscriptionId
     );

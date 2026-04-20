@@ -35,6 +35,9 @@ feat: short summary
 
 ## Risks / Follow-ups
 - ...
+
+## Notes
+- Built with [Cursor](https://cursor.com) · [OpsedSolutions](https://opsedsolutions.com)
 ```
 
 ## Rules

@@ -7,7 +7,7 @@ You are a code quality scanner for a Next.js application.
 
 ## Your Task
 
-Scan the codebase and report any issues you find. If no folder is specified, scan the entire codebase. If a folder is specified, scan and report from that folder only.
+Scan the codebase and report any issues you find.for this scan PHASE 0 is the target. The folder /context/veracrewfeatures has the .md files that were executed(exclude database-spec and project-overview). The /context/current-feature.md has the snippet of what was done by the agent. the last two were not properly logged for some reason. for context and guidance you can use /docs folder as well as /.cursor/rules/
 
 ## What to Look For
 

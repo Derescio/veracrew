@@ -3,6 +3,13 @@ import { prisma } from "@/lib/db/prisma";
 import { AuditAction, OrgStatus, PlanKey, Prisma } from "@/generated/prisma/client";
 import { resolvePlanKey } from "@/lib/billing/plan-mapping";
 
+// Fix #10: structural interface satisfied by both the regular prisma client and an
+// interactive transaction client (tx), enabling audit/activity emits inside transactions.
+interface EmitClient {
+  auditEvent: Pick<typeof prisma.auditEvent, "create">;
+  activityEvent: Pick<typeof prisma.activityEvent, "create">;
+}
+
 /** Sentinel actor ID used for all system-initiated audit/activity events. */
 const SYSTEM_ACTOR = "system";
 
@@ -16,6 +23,7 @@ function activityPurgeAfter(): Date {
 }
 
 async function emitAuditEvent(
+  client: EmitClient,
   organizationId: string,
   action: AuditAction,
   resourceType: string,
@@ -23,7 +31,7 @@ async function emitAuditEvent(
   before?: Record<string, unknown>,
   after?: Record<string, unknown>
 ): Promise<void> {
-  await prisma.auditEvent.create({
+  await client.auditEvent.create({
     data: {
       organizationId,
       actorUserId: SYSTEM_ACTOR,
@@ -37,13 +45,14 @@ async function emitAuditEvent(
 }
 
 async function emitActivityEvent(
+  client: EmitClient,
   organizationId: string,
   verb: string,
   objectType: string,
   objectId: string,
   metadata?: Record<string, unknown>
 ): Promise<void> {
-  await prisma.activityEvent.create({
+  await client.activityEvent.create({
     data: {
       organizationId,
       actorUserId: SYSTEM_ACTOR,
@@ -79,6 +88,14 @@ async function handleSubscriptionCreated(sub: Stripe.Subscription): Promise<void
   const seatCount = sub.items.data[0]?.quantity ?? 1;
 
   const prevStatus = org.status;
+  // Fix #6: map sub.status → OrgStatus so skip-trial ACTIVE subscriptions are handled correctly
+  const newOrgStatus = sub.status === "active" ? OrgStatus.ACTIVE : OrgStatus.TRIALING;
+  const auditAction =
+    newOrgStatus === OrgStatus.ACTIVE
+      ? AuditAction.SUBSCRIPTION_ACTIVATED
+      : AuditAction.SUBSCRIPTION_TRIAL_STARTED;
+  const activityVerb =
+    newOrgStatus === OrgStatus.ACTIVE ? "SUBSCRIPTION_ACTIVATED" : "SUBSCRIPTION_TRIAL_STARTED";
 
   await prisma.$transaction(async (tx) => {
     await tx.orgSubscription.upsert({
@@ -112,24 +129,14 @@ async function handleSubscriptionCreated(sub: Stripe.Subscription): Promise<void
 
     await tx.organization.update({
       where: { id: org.id },
-      data: { status: OrgStatus.TRIALING },
+      data: { status: newOrgStatus },
     });
-  });
 
-  await emitAuditEvent(
-    org.id,
-    AuditAction.SUBSCRIPTION_TRIAL_STARTED,
-    "OrgSubscription",
-    sub.id,
-    { status: prevStatus },
-    { status: OrgStatus.TRIALING }
-  );
-  await emitActivityEvent(
-    org.id,
-    "SUBSCRIPTION_TRIAL_STARTED",
-    "OrgSubscription",
-    sub.id
-  );
+    // Fix #10: audit/activity inside the transaction so status change and audit trail are atomic
+    await emitAuditEvent(tx, org.id, auditAction, "OrgSubscription", sub.id,
+      { status: prevStatus }, { status: newOrgStatus });
+    await emitActivityEvent(tx, org.id, activityVerb, "OrgSubscription", sub.id);
+  });
 }
 
 // ─── Subscription Updated ────────────────────────────────────────────────────
@@ -163,7 +170,7 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription): Promise<void
     (sub.latest_invoice as Stripe.Invoice).confirmation_secret !== null;
   const seatCount = sub.items.data[0]?.quantity ?? 1;
 
-  const prevSubStatus = existing.status;
+  // Fix #12: removed unused prevSubStatus variable
   const prevOrgStatus = existing.organization.status;
   const prevHasPaymentMethod = existing.hasPaymentMethod;
 
@@ -194,60 +201,31 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription): Promise<void
         data: { status: newOrgStatus },
       });
     }
-  });
 
-  // Emit audit + activity for trialing → active (payment method added)
-  if (
-    !prevHasPaymentMethod &&
-    hasPaymentMethod &&
-    prevOrgStatus === OrgStatus.TRIALING
-  ) {
-    await emitAuditEvent(
-      existing.organizationId,
-      AuditAction.SUBSCRIPTION_PAYMENT_METHOD_ADDED,
-      "OrgSubscription",
-      sub.id,
-      { hasPaymentMethod: false },
-      { hasPaymentMethod: true }
-    );
-    await emitActivityEvent(
-      existing.organizationId,
-      "SUBSCRIPTION_PAYMENT_METHOD_ADDED",
-      "OrgSubscription",
-      sub.id
-    );
-  }
-
-  if (newOrgStatus !== prevOrgStatus) {
-    if (newOrgStatus === OrgStatus.ACTIVE) {
-      await emitAuditEvent(
-        existing.organizationId,
-        AuditAction.SUBSCRIPTION_ACTIVATED,
-        "OrgSubscription",
-        sub.id,
-        { status: prevOrgStatus },
-        { status: OrgStatus.ACTIVE }
-      );
-      await emitActivityEvent(
-        existing.organizationId,
-        "SUBSCRIPTION_ACTIVATED",
-        "OrgSubscription",
-        sub.id
-      );
-    } else if (newOrgStatus === OrgStatus.PAST_DUE) {
-      await emitAuditEvent(
-        existing.organizationId,
-        AuditAction.SUBSCRIPTION_PAST_DUE,
-        "OrgSubscription",
-        sub.id,
-        { status: prevOrgStatus },
-        { status: OrgStatus.PAST_DUE }
-      );
-      // PAST_DUE: audit only, no ActivityEvent per fan-out table
+    // Fix #10: emit audit/activity inside transaction so DB state and audit trail are atomic
+    if (!prevHasPaymentMethod && hasPaymentMethod && prevOrgStatus === OrgStatus.TRIALING) {
+      await emitAuditEvent(tx, existing.organizationId,
+        AuditAction.SUBSCRIPTION_PAYMENT_METHOD_ADDED, "OrgSubscription", sub.id,
+        { hasPaymentMethod: false }, { hasPaymentMethod: true });
+      await emitActivityEvent(tx, existing.organizationId,
+        "SUBSCRIPTION_PAYMENT_METHOD_ADDED", "OrgSubscription", sub.id);
     }
-  }
 
-  void prevSubStatus; // referenced for clarity, not used directly
+    if (newOrgStatus !== prevOrgStatus) {
+      if (newOrgStatus === OrgStatus.ACTIVE) {
+        await emitAuditEvent(tx, existing.organizationId,
+          AuditAction.SUBSCRIPTION_ACTIVATED, "OrgSubscription", sub.id,
+          { status: prevOrgStatus }, { status: OrgStatus.ACTIVE });
+        await emitActivityEvent(tx, existing.organizationId,
+          "SUBSCRIPTION_ACTIVATED", "OrgSubscription", sub.id);
+      } else if (newOrgStatus === OrgStatus.PAST_DUE) {
+        await emitAuditEvent(tx, existing.organizationId,
+          AuditAction.SUBSCRIPTION_PAST_DUE, "OrgSubscription", sub.id,
+          { status: prevOrgStatus }, { status: OrgStatus.PAST_DUE });
+        // PAST_DUE: audit only, no ActivityEvent per fan-out table
+      }
+    }
+  });
 }
 
 // ─── Subscription Deleted ────────────────────────────────────────────────────
@@ -275,22 +253,13 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription): Promise<void
       where: { id: existing.organizationId },
       data: { status: OrgStatus.CANCELLED },
     });
+    // Fix #10: emit inside transaction so cancellation and audit trail are atomic
+    await emitAuditEvent(tx, existing.organizationId,
+      AuditAction.SUBSCRIPTION_CANCELLED, "OrgSubscription", sub.id,
+      { status: prevOrgStatus }, { status: OrgStatus.CANCELLED });
+    await emitActivityEvent(tx, existing.organizationId,
+      "SUBSCRIPTION_CANCELLED", "OrgSubscription", sub.id);
   });
-
-  await emitAuditEvent(
-    existing.organizationId,
-    AuditAction.SUBSCRIPTION_CANCELLED,
-    "OrgSubscription",
-    sub.id,
-    { status: prevOrgStatus },
-    { status: OrgStatus.CANCELLED }
-  );
-  await emitActivityEvent(
-    existing.organizationId,
-    "SUBSCRIPTION_CANCELLED",
-    "OrgSubscription",
-    sub.id
-  );
 }
 
 // ─── Payment Succeeded ───────────────────────────────────────────────────────
@@ -332,22 +301,13 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
       where: { id: existing.organizationId },
       data: { status: OrgStatus.ACTIVE },
     });
+    // Fix #10: emit inside transaction so activation and audit trail are atomic
+    await emitAuditEvent(tx, existing.organizationId,
+      AuditAction.SUBSCRIPTION_ACTIVATED, "OrgSubscription", subscriptionId,
+      { status: prevOrgStatus }, { status: OrgStatus.ACTIVE });
+    await emitActivityEvent(tx, existing.organizationId,
+      "SUBSCRIPTION_ACTIVATED", "OrgSubscription", subscriptionId);
   });
-
-  await emitAuditEvent(
-    existing.organizationId,
-    AuditAction.SUBSCRIPTION_ACTIVATED,
-    "OrgSubscription",
-    subscriptionId,
-    { status: prevOrgStatus },
-    { status: OrgStatus.ACTIVE }
-  );
-  await emitActivityEvent(
-    existing.organizationId,
-    "SUBSCRIPTION_ACTIVATED",
-    "OrgSubscription",
-    subscriptionId
-  );
 }
 
 // ─── Payment Failed ──────────────────────────────────────────────────────────
@@ -387,17 +347,12 @@ async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
         data: { status: OrgStatus.PAST_DUE },
       });
     }
+    // Fix #10: emit inside transaction so status change and audit trail are atomic
+    await emitAuditEvent(tx, existing.organizationId,
+      AuditAction.SUBSCRIPTION_PAYMENT_FAILED, "OrgSubscription", subscriptionId,
+      { status: prevOrgStatus }, { status: OrgStatus.PAST_DUE });
+    // PAYMENT_FAILED: audit only, no ActivityEvent per fan-out table
   });
-
-  await emitAuditEvent(
-    existing.organizationId,
-    AuditAction.SUBSCRIPTION_PAYMENT_FAILED,
-    "OrgSubscription",
-    subscriptionId,
-    { status: prevOrgStatus },
-    { status: OrgStatus.PAST_DUE }
-  );
-  // PAYMENT_FAILED: audit only, no ActivityEvent per fan-out table
 }
 
 // ─── Trial Will End ──────────────────────────────────────────────────────────
@@ -419,9 +374,10 @@ async function handleTrialWillEnd(sub: Stripe.Subscription): Promise<void> {
   // Reminder sent if no payment method.
   if (!existing.hasPaymentMethod) {
     // TODO (Phase 4): send trial-ending reminder email via Resend
-    console.info(
-      `[billing] trial_will_end: org ${existing.organizationId} has no payment method — reminder should be sent`
-    );
+    // Fix #21: console.warn with structured object matches project logging pattern
+    console.warn("[billing] trial_will_end: no payment method — reminder pending", {
+      organizationId: existing.organizationId,
+    });
   }
   // No audit or activity event emitted here per spec
 }
@@ -463,29 +419,23 @@ async function handlePaymentMethodDetached(pm: Stripe.PaymentMethod): Promise<vo
   });
   if (!sub) return;
 
-  await prisma.orgSubscription.update({
-    where: { organizationId: org.id },
-    data: { hasPaymentMethod: false },
+  // Fix #10: wrap update + emits in a transaction so detach and audit trail are atomic
+  await prisma.$transaction(async (tx) => {
+    await tx.orgSubscription.update({
+      where: { organizationId: org.id },
+      data: { hasPaymentMethod: false },
+    });
+
+    await emitAuditEvent(tx, org.id,
+      AuditAction.SUBSCRIPTION_PAYMENT_METHOD_DETACHED, "OrgSubscription",
+      sub.stripeSubscriptionId, { hasPaymentMethod: true }, { hasPaymentMethod: false });
+
+    // Only emit ActivityEvent when trial is still live
+    if (org.status === OrgStatus.TRIALING) {
+      await emitActivityEvent(tx, org.id,
+        "SUBSCRIPTION_PAYMENT_METHOD_DETACHED", "OrgSubscription", sub.stripeSubscriptionId);
+    }
   });
-
-  await emitAuditEvent(
-    org.id,
-    AuditAction.SUBSCRIPTION_PAYMENT_METHOD_DETACHED,
-    "OrgSubscription",
-    sub.stripeSubscriptionId,
-    { hasPaymentMethod: true },
-    { hasPaymentMethod: false }
-  );
-
-  // Only emit ActivityEvent when trial is still live
-  if (org.status === OrgStatus.TRIALING) {
-    await emitActivityEvent(
-      org.id,
-      "SUBSCRIPTION_PAYMENT_METHOD_DETACHED",
-      "OrgSubscription",
-      sub.stripeSubscriptionId
-    );
-  }
 }
 
 // ─── Idempotency Guard + Router ───────────────────────────────────────────────
@@ -518,14 +468,13 @@ export async function handleStripeWebhook(event: Stripe.Event): Promise<void> {
     throw err;
   }
 
-  try {
-    await dispatch(event);
-  } finally {
-    await prisma.stripeWebhookEvent.update({
-      where: { id: event.id },
-      data: { processedAt: new Date() },
-    });
-  }
+  // Fix #1: processedAt must only be written on success so Stripe can retry failed events.
+  // Using finally() stamped processedAt even when dispatch() threw, silently swallowing retries.
+  await dispatch(event);
+  await prisma.stripeWebhookEvent.update({
+    where: { id: event.id },
+    data: { processedAt: new Date() },
+  });
 }
 
 async function dispatch(event: Stripe.Event): Promise<void> {

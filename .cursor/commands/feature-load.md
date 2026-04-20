@@ -38,6 +38,10 @@ Branch naming: `feature/<slug>` — slug derived from H1 title (lowercase, hyphe
 5. Output the full plan.
 6. Tell the user: open a **new session** before `/feature-start`.
 
+> **YOUR TURN ENDS HERE.**
+> Do NOT create branches. Do NOT edit source files. Do NOT run build commands.
+> Planning is the only output of this command. Implementation happens exclusively in a new session with `/feature-start`.
+
 ### Key Patterns rules (strictly enforced)
 
 Key Patterns must be **pointer-based**. Do NOT paste full JSX, CSS blocks, or function bodies.
@@ -66,6 +70,9 @@ Standalone re-plan — use when requirements have changed.
 4. Set status to `Planned`.
 5. Output the full revised plan.
 6. Tell the user: open a **new session** before `/feature-start`.
+
+> **YOUR TURN ENDS HERE.**
+> Do NOT create branches. Do NOT edit source files. Do NOT run build commands.
 
 ---
 

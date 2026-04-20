@@ -135,7 +135,8 @@ export function scopedPrisma(organizationId: string, actorUserId?: string) {
                   },
                 })
                 .catch((err: unknown) => {
-                  console.error("[scopedPrisma] AuditEvent emit failed:", err);
+                  // Fix #21: structured log to match project-wide logging pattern
+                  console.error("[scopedPrisma] AuditEvent emit failed", { err });
                 });
             }
           }

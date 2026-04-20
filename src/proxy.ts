@@ -6,18 +6,51 @@ import { routing } from "@/i18n/routing";
 
 const intlMiddleware = createIntlMiddleware(routing);
 
-const AUTH_PAGES = ["/auth/sign-in", "/auth/sign-up", "/auth/error"];
+const AUTH_PAGES = [
+  "/auth/sign-in",
+  "/auth/sign-up",
+  "/auth/error",
+  "/auth/forgot-password",
+  "/auth/reset-password",
+  "/auth/invite",
+  "/auth/2fa",
+];
 
-function isAuthPage(pathname: string): boolean {
-  return AUTH_PAGES.some((page) => pathname.startsWith(page));
+// Marketing/legal pages that must remain accessible without a session.
+// Paths are compared after the locale segment has been stripped.
+const PUBLIC_PATHS = ["/", "/demo", "/contact", "/privacy", "/terms"];
+
+const LOCALE_PREFIX_REGEX = /^\/(en|fr)(?=\/|$)/;
+
+function stripLocale(pathname: string): string {
+  const stripped = pathname.replace(LOCALE_PREFIX_REGEX, "");
+  return stripped.length === 0 ? "/" : stripped;
 }
 
+function isAuthPage(pathname: string): boolean {
+  const path = stripLocale(pathname);
+  return AUTH_PAGES.some((page) => path === page || path.startsWith(`${page}/`));
+}
+
+function isPublicPage(pathname: string): boolean {
+  const path = stripLocale(pathname);
+  return PUBLIC_PATHS.includes(path);
+}
+
+const IS_DEV = process.env.NODE_ENV === "development";
+
 function applySecurityHeaders(response: NextResponse): NextResponse {
+  // 'unsafe-eval' is required by React in development mode for call-stack reconstruction.
+  // It is omitted in production (Fix #4).
+  const scriptSrc = IS_DEV
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com"
+    : "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com";
+
   response.headers.set(
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com",
+      scriptSrc,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self'",
@@ -60,7 +93,7 @@ export const proxy = auth((req: NextRequest & { auth: unknown }) => {
     return applySecurityHeaders(response);
   }
 
-  if (!session && !isAuthPage(pathname)) {
+  if (!session && !isAuthPage(pathname) && !isPublicPage(pathname)) {
     const signInUrl = new URL("/auth/sign-in", req.url);
     signInUrl.searchParams.set("callbackUrl", req.url);
     const response = NextResponse.redirect(signInUrl);

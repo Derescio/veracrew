@@ -42,7 +42,7 @@ export function HeroSection() {
 
           <div className="flex flex-wrap gap-4 mb-8">
             <Link
-              href="/auth/register"
+              href="/en/auth/sign-up"
               className="inline-flex items-center gap-2 bg-brand-blue hover:bg-brand-blue-dark text-white font-semibold px-6 py-3 rounded-xl transition-colors text-sm"
             >
               Get Started

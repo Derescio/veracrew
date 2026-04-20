@@ -1,1 +1,41 @@
-{}
+{
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "team": "Équipe",
+    "locations": "Emplacements",
+    "schedule": "Planification",
+    "documents": "Documents",
+    "timeTracking": "Suivi du temps",
+    "reports": "Rapports",
+    "settings": "Paramètres"
+  },
+  "auth": {
+    "signIn": "Se connecter",
+    "signUp": "Créer un compte",
+    "signOut": "Se déconnecter",
+    "forgotPassword": "Mot de passe oublié?",
+    "resetPassword": "Réinitialiser le mot de passe",
+    "email": "Courriel",
+    "password": "Mot de passe",
+    "name": "Nom complet",
+    "confirmPassword": "Confirmer le mot de passe"
+  },
+  "billing": {
+    "trial": "Essai",
+    "active": "Actif",
+    "pastDue": "En retard",
+    "expired": "Expiré",
+    "cancelled": "Annulé",
+    "addCard": "Ajouter une carte",
+    "trialEndsIn": "Votre essai gratuit se termine dans {days} jour(s). Ajoutez un mode de paiement pour conserver l'accès.",
+    "paymentFailed": "Votre paiement a échoué. Mettez à jour votre mode de paiement pour éviter une interruption de service.",
+    "trialExpired": "Votre essai a expiré. Votre compte est en lecture seule jusqu'à la réactivation."
+  },
+  "team": {
+    "invite": "Inviter un membre",
+    "pending": "Invitations en attente",
+    "active": "Actif",
+    "suspended": "Suspendu",
+    "noMembers": "Aucun membre de l'équipe. Envoyez une invitation pour commencer."
+  }
+}

@@ -1,10 +1,12 @@
 import { Resend } from "resend";
+import { env } from "@/lib/env";
 
 let _resend: Resend | null = null;
 
 function getResend(): Resend {
   if (!_resend) {
-    _resend = new Resend(process.env.RESEND_API_KEY ?? "");
+    // Fix #9: use validated env singleton instead of raw process.env
+    _resend = new Resend(env.RESEND_API_KEY ?? "");
   }
   return _resend;
 }
@@ -26,7 +28,11 @@ export async function sendEmail({
   html,
   from,
 }: SendEmailOptions): Promise<void> {
-  const fromAddress = from ?? process.env.EMAIL_FROM ?? "noreply@veracrew.com";
+  // Fix #11: use validated env; throw explicitly rather than silently using an unverified fallback
+  const fromAddress = from ?? env.EMAIL_FROM;
+  if (!fromAddress) {
+    throw new Error("EMAIL_FROM is not configured");
+  }
 
   const { error } = await getResend().emails.send({
     from: fromAddress,

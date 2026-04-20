@@ -18,6 +18,9 @@ export async function requireOrgActive(ctx: OrgContext): Promise<void> {
     org.deletedAt !== null ||
     !ACTIVE_STATUSES.includes(org.status as (typeof ACTIVE_STATUSES)[number])
   ) {
-    throw new OrgInactiveError();
+    throw new OrgInactiveError({
+      status: org?.status ?? "SUSPENDED",
+      organizationId: ctx.organizationId,
+    });
   }
 }

@@ -1,13 +1,15 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { env } from "@/lib/env";
 
 let _redis: Redis | null = null;
 
 function getRedis(): Redis {
   if (!_redis) {
+    // Fix #9: use validated env singleton; empty-string fallbacks masked missing config
     _redis = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL ?? "",
-      token: process.env.UPSTASH_REDIS_REST_TOKEN ?? "",
+      url: env.UPSTASH_REDIS_REST_URL ?? "",
+      token: env.UPSTASH_REDIS_REST_TOKEN ?? "",
     });
   }
   return _redis;
